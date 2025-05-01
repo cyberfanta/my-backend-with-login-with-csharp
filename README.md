@@ -1,15 +1,43 @@
-# My Backend with Login (.NET Core)
+# Backend con .NET Core, SQL Server y Docker con Autenticación
 
-This project is a backend developed with .NET Core, SQL Server, and Docker. It includes JWT authentication functionality and a REST API for user management.
+Este proyecto implementa un backend con .NET Core 7.0, SQL Server y Docker que incluye un sistema completo de autenticación.
 
-## Features
+## Características principales
 
-- JWT Authentication
-- RESTful API
-- Pagination support
-- SQL Server database
-- Swagger documentation
-- Docker for development and deployment
+- Autenticación con JWT Token
+- Endpoints protegidos con Bearer Authentication
+- SQL Server en Docker
+- Adminer como administrador de base de datos
+- Documentación con Swagger
+
+## Endpoints
+
+### Autenticación
+- `POST /Auth/signup` - Registro de usuarios
+- `POST /Auth/login` - Inicio de sesión
+- `POST /Auth/refresh-token` - Renovación de token
+- `POST /Auth/logout` - Cierre de sesión
+- `DELETE /Auth/delete-account` - Eliminación de cuenta
+
+### Usuarios
+- `GET /User` - Listado de usuarios con paginación
+- `GET /User/{id}` - Obtener usuario por ID
+
+## Configuración con Docker
+
+El proyecto incluye un archivo `docker-compose.yml` que configura:
+
+- API en el puerto 4500
+- SQL Server en el puerto 4502
+- Adminer en el puerto 4501
+
+## Cómo ejecutar
+
+```bash
+docker-compose up --build -d
+```
+
+La API estará disponible en http://localhost:4500/api
 
 ## Prerequisites
 
@@ -27,34 +55,6 @@ my-backend-with-login-with-csharp/
 ├── docker-compose.yml          # Docker Compose configuration
 └── Dockerfile                  # Dockerfile for building the image
 ```
-
-## Installation and Execution
-
-1. Clone this repository
-2. From the project root, run:
-
-```bash
-docker-compose up -d
-```
-
-3. Access the API at http://localhost:4500
-4. Access Swagger documentation at http://localhost:4500/api
-5. To connect to the database manager Adminer: http://localhost:4501
-
-## Endpoints
-
-### Authentication
-
-- POST /auth/signup - Register a new user
-- POST /auth/login - User login
-- POST /auth/refresh-token - Refresh JWT token
-- POST /auth/logout - Logout (requires authentication)
-- DELETE /auth/delete-account - Delete account (requires authentication)
-
-### Users
-
-- GET /user - Get paginated list of users
-- GET /user/{id} - Get user by ID
 
 ## SQL Server Credentials
 
