@@ -23,6 +23,10 @@ Este proyecto implementa un backend con .NET Core 7.0, SQL Server y Docker que i
 - `GET /User` - Listado de usuarios con paginación
 - `GET /User/{id}` - Obtener usuario por ID
 
+### Documentos
+- `POST /Document/process-pdf` - Procesar un archivo PDF
+- `POST /Document/process-pdfs` - Procesar múltiples archivos PDF
+
 ## Configuración con Docker
 
 El proyecto incluye un archivo `docker-compose.yml` que configura:

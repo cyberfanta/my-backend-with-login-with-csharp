@@ -26,6 +26,11 @@ namespace MyBackendApi.Configuration
                 Name = "User", 
                 Description = "User management operations" 
             });
+            
+            swaggerDoc.Tags.Add(new OpenApiTag { 
+                Name = "Document", 
+                Description = "Document processing operations" 
+            });
         }
     }
 } 

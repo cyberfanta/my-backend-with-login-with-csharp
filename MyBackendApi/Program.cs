@@ -138,6 +138,7 @@ builder.Services.AddAuthentication(options =>
 // Register services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<DocumentService>();
 
 var app = builder.Build();
 
