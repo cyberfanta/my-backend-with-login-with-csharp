@@ -57,7 +57,8 @@ namespace MyBackendApi.Services
             {
                 Token = token,
                 Success = true,
-                Message = "Registration successful"
+                Message = "Registration successful",
+                UserId = user.Id
             };
         }
 
@@ -83,7 +84,8 @@ namespace MyBackendApi.Services
             {
                 Token = token,
                 Success = true,
-                Message = "Login successful"
+                Message = "Login successful",
+                UserId = user.Id
             };
         }
 
@@ -134,7 +136,8 @@ namespace MyBackendApi.Services
                 {
                     Token = newToken,
                     Success = true,
-                    Message = "Token updated successfully"
+                    Message = "Token updated successfully",
+                    UserId = user.Id
                 };
             }
             catch (Exception)
@@ -228,8 +231,14 @@ namespace MyBackendApi.Services
 
         private string HashPassword(string password)
         {
-            using var hmac = new HMACSHA512();
-            var salt = hmac.Key;
+            byte[] salt = new byte[16]; // Usar 16 bytes para el salt
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+
+            // Usar HMACSHA256 en lugar de HMACSHA512
+            using var hmac = new HMACSHA256(salt);
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
 
             // Combine salt and hash
@@ -242,26 +251,117 @@ namespace MyBackendApi.Services
 
         private bool VerifyPassword(string password, string storedHash)
         {
-            var hashBytes = Convert.FromBase64String(storedHash);
-
-            // Extract the salt (first 64 bytes)
-            var salt = new byte[64];
-            Array.Copy(hashBytes, 0, salt, 0, salt.Length);
-
-            // Calculate the hash with the same salt
-            using var hmac = new HMACSHA512(salt);
-            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-
-            // Compare hashes
-            for (int i = 0; i < computedHash.Length; i++)
+            try 
             {
-                if (computedHash[i] != hashBytes[salt.Length + i])
+                var hashBytes = Convert.FromBase64String(storedHash);
+                
+                // El salt ahora es de 16 bytes
+                var saltSize = 16;
+                
+                // Verificar que el hash almacenado tiene el tamaño correcto
+                if (hashBytes.Length < saltSize) 
                 {
                     return false;
                 }
-            }
 
-            return true;
+                // Extract the salt (first 16 bytes)
+                var salt = new byte[saltSize];
+                Array.Copy(hashBytes, 0, salt, 0, saltSize);
+
+                // Calculate the hash with the same salt
+                using var hmac = new HMACSHA256(salt);
+                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+
+                // Verificar que el hash calculado tiene el tamaño correcto
+                if (hashBytes.Length != saltSize + computedHash.Length)
+                {
+                    // Para usuarios existentes con hash en formato antiguo, intentamos verificar
+                    // usando el método antiguo (64 bytes de salt + hash HMACSHA512)
+                    if (TryVerifyOldPasswordFormat(password, storedHash))
+                    {
+                        return true;
+                    }
+                    
+                    return false;
+                }
+
+                // Compare hashes
+                for (int i = 0; i < computedHash.Length; i++)
+                {
+                    if (computedHash[i] != hashBytes[saltSize + i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        private bool TryVerifyOldPasswordFormat(string password, string storedHash)
+        {
+            try
+            {
+                var hashBytes = Convert.FromBase64String(storedHash);
+                
+                // Probar diferentes tamaños de salt
+                int[] possibleSaltSizes = new int[] { 64, 128 };
+                
+                foreach (var saltSize in possibleSaltSizes)
+                {
+                    if (hashBytes.Length < saltSize)
+                    {
+                        continue;
+                    }
+                    
+                    // Extract the salt
+                    var salt = new byte[saltSize];
+                    Array.Copy(hashBytes, 0, salt, 0, saltSize);
+
+                    // Calculate the hash with the same salt
+                    using var hmac = new HMACSHA512(salt);
+                    var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+                    
+                    // Verificar si hay suficientes bytes para comparar
+                    if (hashBytes.Length < saltSize + computedHash.Length)
+                    {
+                        continue;
+                    }
+                    
+                    // Compare hashes
+                    bool match = true;
+                    for (int i = 0; i < computedHash.Length; i++)
+                    {
+                        // Protegerse contra desbordamientos
+                        if (saltSize + i >= hashBytes.Length)
+                        {
+                            match = false;
+                            break;
+                        }
+                        
+                        if (computedHash[i] != hashBytes[saltSize + i])
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+                    
+                    if (match)
+                    {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private string GenerateJwtToken(User user)

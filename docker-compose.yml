@@ -1,67 +1,40 @@
-version: '3.8'
-
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "4500:80"
-    depends_on:
-      - sqlserver
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    restart: on-failure
-    networks:
-      - backend-network
-
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    ports:
-      - "4502:1433"
+  azuresqledge:
+    image: mcr.microsoft.com/azure-sql-edge
+    container_name: azuresqledge
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=Password123!
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-    healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "Password123!" -Q "SELECT 1" || exit 1
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-    networks:
-      - backend-network
-      
-  azuresqledge:
-    image: mcr.microsoft.com/azure-sql-edge:latest
-    cap_add: [ 'SYS_PTRACE' ]
     ports:
-      - "4503:1433"
-    environment:
-      - ACCEPT_EULA=1
-      - MSSQL_SA_PASSWORD=Password123!
+      - "1433:1433"
     volumes:
-      - azuresqledge-data:/var/opt/mssql
+      - sqldata:/var/opt/mssql
+    restart: always
     networks:
-      - backend-network
-      
-  adminer:
-    image: adminer:latest
+      - mynetwork
+
+  mybackendapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mybackendapi
+    ports:
+      - "5000:80"
     depends_on:
-      - sqlserver
-    ports:
-      - "4501:8080"
+      - azuresqledge
     environment:
-      - ADMINER_DEFAULT_SERVER=sqlserver
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=azuresqledge;Database=MyBackendDb;User Id=sa;Password=Password123!;TrustServerCertificate=True;
+    restart: always
+    volumes:
+      - ./MyBackendApi/appsettings.json:/app/appsettings.json
     networks:
-      - backend-network
-    restart: on-failure
+      - mynetwork
 
 networks:
-  backend-network:
+  mynetwork:
     driver: bridge
 
 volumes:
-  sqlserver-data:
-  azuresqledge-data: 
+  sqldata:
+    driver: local 

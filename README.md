@@ -26,6 +26,8 @@ Este proyecto implementa un backend con .NET Core 7.0, SQL Server y Docker que i
 ### Documentos
 - `POST /Document/process-pdf` - Procesar un archivo PDF
 - `POST /Document/process-pdfs` - Procesar múltiples archivos PDF
+- `POST /Document/analyze-pdf` - Analizar un archivo PDF con IA 
+- `POST /Document/analyze-pdfs` - Analizar múltiples archivos PDF con IA
 
 ## Configuración con Docker
 

@@ -11,7 +11,25 @@ using MyBackendApi.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Configurar formatters para manejar correctamente la respuesta de archivos binarios
+    options.FormatterMappings.SetMediaTypeMappingForFormat(
+        "xlsx", 
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+});
+
+// Configuración de CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
 // Configure Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -138,7 +156,10 @@ builder.Services.AddAuthentication(options =>
 // Register services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<DocumentService>();
+builder.Services.AddScoped<PdfAnalyzerService>();
+builder.Services.AddScoped<AiService>();
+builder.Services.AddScoped<ExcelService>();
+builder.Services.AddScoped<ExcelDocumentService>();
 
 var app = builder.Build();
 
@@ -179,9 +200,63 @@ if (app.Environment.IsDevelopment())
         options.DefaultModelsExpandDepth(0); // Hide schemas by default
         options.EnableFilter(); // Enable search 
         options.EnableTryItOutByDefault(); // Enable TryItOut by default
+        
+        // Añadir script personalizado para capturar el token JWT después del login
+        options.InjectJavascript(@"
+            setTimeout(function() {
+                let loginEndpoint = '/auth/login';
+                let authBtn = document.querySelector('.btn.authorize');
+                
+                // Capturar respuestas de la API
+                (function(open) {
+                    XMLHttpRequest.prototype.open = function() {
+                        this.addEventListener('readystatechange', function() {
+                            if (this.readyState === 4 && this.status === 200) {
+                                try {
+                                    // Verificar que sea la respuesta de login
+                                    let url = this.responseURL;
+                                    if (url && url.endsWith(loginEndpoint)) {
+                                        let data = JSON.parse(this.responseText);
+                                        if (data && data.token) {
+                                            console.log('Token capturado automáticamente');
+                                            
+                                            // Clic en el botón de autorización
+                                            if (authBtn) authBtn.click();
+                                            
+                                            // Esperar a que se abra el modal
+                                            setTimeout(function() {
+                                                // Insertar el token en el campo
+                                                let inputField = document.querySelector('.auth-container input[type=text]');
+                                                if (inputField) {
+                                                    inputField.value = data.token;
+                                                    
+                                                    // Clic en el botón Authorize
+                                                    let authorizeBtn = document.querySelector('.auth-btn-wrapper button.authorize');
+                                                    if (authorizeBtn) authorizeBtn.click();
+                                                    
+                                                    // Cerrar el modal
+                                                    setTimeout(function() {
+                                                        let closeBtn = document.querySelector('.auth-btn-wrapper button.btn-done');
+                                                        if (closeBtn) closeBtn.click();
+                                                    }, 500);
+                                                }
+                                            }, 500);
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Error al procesar la respuesta:', e);
+                                }
+                            }
+                        });
+                        open.apply(this, arguments);
+                    };
+                })(XMLHttpRequest.prototype.open);
+            }, 1000);
+        ");
     });
 }
 
+app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
